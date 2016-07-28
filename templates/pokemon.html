@@ -40,13 +40,13 @@
       <div class="col-sm-3 col-md-2 sidebar">
         <div class="panel panel-default">
           <div class="panel-body">
-            Level: {{player['level']}}<br> Exp: {{player['level']}}<br> Stardust: {{currency}}<br> Pokemon Count: {{pokemons|length}}<br>
+            Level: {{player['level']}}<br> Exp: {{player['experience']}}<br> EXP/Hour: {{player['hourly_exp']|int}} <br> Stardust: {{currency}}<br> Pokemon Count: {{pokemons|length}}<br>
           </div>
           <div class="container-fluid">
-            EXP: {{player["experience"]}} / {{player["next_level_xp"]}}
+            Level XP: {{player["level_xp"]}} / {{player["goal_xp"]}}
             <div class="progress">
               <div class="progress-bar" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" style="width: {{ (player["experience"] / player["next_level_xp"] * 100)|int }}%;">
-                {{ (player["experience"] / player["next_level_xp"] * 100)|int }}%
+                {{ (player["level_xp"] / player["goal_xp"] * 100)|int }}%
               </div>
             </div>
             Unique Pokemon: {{player["unique_pokedex_entries"]}} / 151
@@ -68,6 +68,7 @@
             <thead>
               <th>Recent</th>
               <th>Name</th>
+              <th>Nickname</th>
               <th>CP</th>
               <th>IV</th>
               <th>Candies</th>
@@ -83,6 +84,7 @@
               <td data-order="{{ pokemon["creation_time_ms"] }}"><img style="max-height: 50px;" src={{ url_for( 'static', filename="pokemon/%03d.png" % pokemon[
                   'pokemon_id']) }}></td>
               <td>{{pokemon["name"]}}</td>
+              <td data-order="{{pokemon["nickname"]}}">{{pokemon["nickname"]}}</td>
               <td data-order="{{pokemon["cp"]}}">CP: {{pokemon["cp"]}}</td>
               <td data-order="{{pokemon["iv"]|round(1, 'floor')}}">IV: {{pokemon["iv"]|round(1, 'floor')}}%</td>
               <td data-order="{{pokemon["candy"]}}">Candy: {{pokemon["candy"]}}</td>
@@ -90,8 +92,8 @@
               <td data-order="{{pokemon["individual_attack"]}}">Att IV: {{pokemon["individual_attack"]}}</td>
               <td data-order="{{pokemon["individual_stamina"]}}">Sta IV: {{pokemon["individual_stamina"]}}</td>
               <td data-order="{{pokemon["individual_defense"]}}">Def IV: {{pokemon["individual_defense"]}}</td>
-              <td>{{pokemon["move_1"]}}</td>
-              <td>{{pokemon["move_2"]}}</td>
+              <td>{{attacks[pokemon["move_1"]]}}</td>
+              <td>{{attacks[pokemon["move_2"]]}}</td>
             </tr>
             {% endfor %}
           </table>

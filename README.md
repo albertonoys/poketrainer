@@ -46,12 +46,19 @@ optional arguments:
     * `SPIN_ALL_FORTS` [Experimental] will try to route using google maps(must have key) to all visible forts, if `SKIP_VISITED_FORT_DURATION` is set high enough, you may roam around forever.
     * `KEEP_POKEMON_IDS` IDs of pokemon you want the bot to hold regardless of IV/CP
     * `CATCH_POKEMON` Allows you to disabling catching pokemon if you just want to mine for the forts for pokeballs
-
-----
-
+    * `EGG_INCUBATION`
+     * `ENABLE` enables automatic use of incubators (default: true)
+     * `USE_DISPOSABLE_INCUBATORS` enables use of disposable (3-times use) incubators (default: false)
+     * `BIG_EGGS_FIRST` incubate big eggs (most km) first (default: true)
     * `RELEASE_DUPLICATES` The bot seems to have a bad habit of hoarding pokemon. Enabling this feature (disabled by default) will have the bot automatically transfer pokemon that are duplicates. To determine which pokemon to transfer when duplicates exist, the lvl's of the pokemon are compared. A pokemon's lvl is an arbitrary and configurable parameter that can either be representative of a pokemon's CP, IV, CPxIV, or CP+IV. The bot will transfer the lowest lvl pokemon, maintaining` MIN_SIMILAR_POKEMON` of each type. To be completely confident that the bot will not transfer your high lvl pokemon, when this feature is enabled only pokemon with a lvl below `RELEASE_DUPLICATES_MAX_LVL`. If you have multiple pokemon that are close to the same lvl the bot can be configured to not transfer them by using `RELEASE_DUPLICATES_SCALER`. The value of this config is multiplied by the highest lvl pokemon of a type and only those pokemon that are less than the scaled lvl are transfered.
      * EXAMPlES: If you set lvl to "IV" while having two Snorlaxs, one with stats CP:14 IV:95 and the other with CP:1800 IV:30 the bot will transfer the Snorlax with CP of 1800 and keep the CP 14 Snorlax because you have indicated you only care about a pokemon's IV. It must be fully understood why this happens to avoid unwanted transfer of pokemon. If not used correctly this feature can very easily transfer a large ammount of your pokemon so please make sure you fully understand it's mechanics before attempting use!
-
+    * `NEEDY_ITEM_FARMING` [Experimental] will cease trying to catch pokemon and roam around to collect more pokeballs when inventory is low
+     * `ENABLE` : `Boolean`, whether or not this feature is enabled
+     * `POKEBALL_FARM_THRESHOLD` : `Integer`, when the observed pokeball count drops on or below this number, skip catching pokemon and begin collecting.
+     * `POKEBALL_CONTINUE_THRESHOLD`: `Integer`, when the observed pokeball count reaches this amount, stop farming and go back to catching pokemon.
+     * `FARM_IGNORE_POKEBALL_COUNT`: `Boolean`, Whether to include this ball in counting. Same goes for `GREATBALL`, `ULTRABALL`, and `MASTERBALL`. Masterball is ignored by default.
+     * `FARM_OVERRIDE_STEP_SIZE`: `Integer`, When it goes into farming mode, the bot assumes this step size to potentially speed up resource gathering. _This might lead to softbans._ Setting to `-1` disables this feature. Disabled by default for safety.
+     * If `EXPERIMENTAL` OR `CATCH_POKEMON` are false, this configuration will disable itself.
 
 ## Requirements
  * Run `pip install -r requirements.txt`
@@ -79,12 +86,10 @@ Put them in config. Type exactly as the name appears
 
 ### What's working:
 What's working:
- * Walking to pokestops and spinning them
- * Capturing any pokemon it sees on the way
- * Releasing pokemon that you have duplicates of if under CP_CUTOFF (FIXME this is not the best idea....)
-  * Change CP_CUTOFF in `pgoapi.py` to configure this, by default it is 0 (to never release)
+ * A lot of things. Check out the example config to see some of the features. Catching Lured pokemon, regular pokemon, multiple kinds of navigation (google maps, walking, driving, customized speed), a web ui, auto transfers, auto evolves, auto power ups, auto egg incubation, inventory managament, multiple account botting. And much more, README to be updated soon
 
- * And much more, README to be updated soon
+## Chatting with us:
+We're hanging out at the [Pokemon GO Reverse Engineering team on Slack](https://pkre.slack.com). [Need an invite?](https://shielded-earth-81203.herokuapp.com/)
 
 ## Credits
 * [tejado](https://github.com/tejado) for the base of this
