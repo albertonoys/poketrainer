@@ -25,6 +25,14 @@
         background-image: url("https://cdn.datatables.net/1.10.12/images/sort_desc.png");
     }
   </style>
+  <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
+<script type="text/javascript" charset="utf-8">
+    var socket = io.connect('http://' + document.domain + ':' + location.port);
+    socket.on('connect', function() {
+        socket.emit('my event', {data: 'I\'m connected!'});
+    });
+</script>
+
 </head>
 
 <body>
@@ -35,6 +43,15 @@
       </div>
     </div>
   </nav>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul class=flashes>
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
   <div class="container-fluid">
     <div class="row">
       <div class="col-sm-3 col-md-2 sidebar">
@@ -78,6 +95,7 @@
               <th>Def IV</th>
               <th>Move 1</th>
               <th>Move 2</th>
+              <th>Transfer</th>
             </thead>
             {% for pokemon in pokemons %}
             <tr id="{{pokemon['id']}}">
@@ -94,6 +112,7 @@
               <td data-order="{{pokemon["individual_defense"]}}">Def IV: {{pokemon["individual_defense"]}}</td>
               <td>{{attacks[pokemon["move_1"]]}}</td>
               <td>{{attacks[pokemon["move_2"]]}}</td>
+              <td><a href="{{ url_for('transfer', username = player['username'], p_id = pokemon['id'])}}">Transfer</a></td>
             </tr>
             {% endfor %}
           </table>

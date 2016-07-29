@@ -1,12 +1,18 @@
 # DISCLAIMER: This is jank
-from flask import Flask, render_template
+from flask import Flask, render_template, flash, redirect, url_for, abort
 import json
 import csv
 from math import floor
 from collections import defaultdict
 import re
 from pgoapi.poke_utils import *
+import tempfile
+import zerorpc
+import os
+from flask_socketio import SocketIO
+
 app = Flask(__name__, template_folder="templates")
+app.secret_key = ".t\x86\xcb3Lm\x0e\x8c:\x86\xe8FD\x13Z\x08\xe1\x04(\x01s\x9a\xae"
 
 pokemon_names = json.load(open("pokemon.en.json"))
 pokemon_details = {}
@@ -27,13 +33,18 @@ with open ("GAME_ATTACKS_v0_1.tsv") as tsv:
     for row in reader:
         attacks[int(row["Num"])] = row["Move"]
 
+
 @app.route("/<username>/pokemon")
 def inventory(username):
+    c = get_api_rpc(username)
+    if c is None:
+        return("There is no bot running with the input username!")
     with open("data_dumps/%s.json"%username) as f:
         data = f.read()
         data = json.loads(data.encode())
         currency = data['GET_PLAYER']['player_data']['currencies'][1]['amount']
-        latlng = "%f,%f" % (data["lat"],data["lng"])
+        latlng = c.current_location()
+        latlng = "%f,%f" % (latlng[0],latlng[1])
         items = data['GET_INVENTORY']['inventory_delta']['inventory_items']
         pokemons = []
         candy = defaultdict(int)
@@ -58,7 +69,32 @@ def inventory(username):
         player['level_xp'] = player.get('experience',0)-player.get('prev_level_xp',0)
         player['hourly_exp'] = data.get("hourly_exp",0)
         player['goal_xp'] = player.get('next_level_xp',0)-player.get('prev_level_xp',0)
+        player['username'] = username
         return render_template('pokemon.html', pokemons=pokemons, player=player, currency="{:,d}".format(currency), candy=candy, latlng=latlng, attacks=attacks)
 
+
+def get_api_rpc(username):
+    desc_file = os.path.dirname(os.path.realpath(__file__))+os.sep+".listeners"
+    sock_port = 0
+    with open(desc_file) as f:
+        data = f.read()
+        data = json.loads(data.encode() if len(data) > 0 else '{}')
+        if username not in data:
+            print("There is no bot running with the input username!")
+            return None
+        sock_port = int(data[username])
+
+    c = zerorpc.Client()
+    c.connect("tcp://127.0.0.1:%i"%sock_port)
+    return c
+
+@app.route("/<username>/transfer/<p_id>")
+def transfer(username, p_id):
+    c = get_api_rpc(username)
+    if c and c.releasePokemonById(p_id) == 1:
+        flash("Released")
+    else:
+        flash("Failed!")
+    return redirect(url_for('inventory', username = username))
 if __name__ == "__main__":
     app.run(host='0.0.0.0',debug=True)
