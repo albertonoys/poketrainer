@@ -36,6 +36,7 @@ optional arguments:
     * USE_GOOGLE will enable google walking directions for navigation
      * You will probably need to provide an api key in `GMAPS_API_KEY` to avoid rate limits
     * `STEP_SIZE` corresponds to how many meters you want to move at most between server calls, set this around 4-6 for walking or 100-200 for really, really fast driving
+    * `WANDER_STEPS` will set the distance a pokestop can be away before and still allow us to wander off the walk path. This allows you to get pokestops that aren't close to the sidewalk/road. If you don't set it we won't wander off the path.
     * `MIN_KEEP_IV` is the minimum pokemon IV that you want to keep, note that the highest CP pokemon you have will always be kept regardless of its IV
      * Setting this to 0 will never transfer anything
     * `KEEP_CP_OVER` Never transfer any pokemon above this CP
@@ -45,6 +46,7 @@ optional arguments:
      * Setting this to 500 means avoid a fort for 500 seconds before returning, (Should be higher than 300 to have any effect). This will let the bot explore a bigger area.
     * `SPIN_ALL_FORTS` [Experimental] will try to route using google maps(must have key) to all visible forts, if `SKIP_VISITED_FORT_DURATION` is set high enough, you may roam around forever.
     * `KEEP_POKEMON_IDS` IDs of pokemon you want the bot to hold regardless of IV/CP
+     * `KEEP_POKEMON_MAX_COUNT` default 9999. If you want to keep a certain type of pokemon but you accidently run into a nest? Don't worry this will make sure you only keep X amount of pokemon specified in `KEEP_POKEMON_IDS`
     * `CATCH_POKEMON` Allows you to disabling catching pokemon if you just want to mine for the forts for pokeballs
     * `EGG_INCUBATION`
      * `ENABLE` enables automatic use of incubators (default: true)

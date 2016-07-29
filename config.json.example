@@ -1,0 +1,68 @@
+{
+  "accounts": [
+    {
+      "auth_service": "google",
+      "username": "test@gmail.com",
+      "password": "password",
+      "location": "University of Southern California, Los Angeles, CA",
+      "USE_GOOGLE": true,
+      "GMAPS_API_KEY": "some api key here",
+      "KEEP_CP_OVER": 500,
+      "KEEP_IV_OVER": 50,
+      "STEP_SIZE": 100,
+      "EXPERIMENTAL": false,
+      "SKIP_VISITED_FORT_DURATION": 600,
+      "SPIN_ALL_FORTS": true,
+      "STAY_WITHIN_PROXIMITY": 9999,
+      "AUTO_USE_LUCKY_EGG": false,
+      "EGG_INCUBATION": {
+        "ENABLE": true,
+        "USE_DISPOSABLE_INCUBATORS": false,
+        "BIG_EGGS_FIRST": true
+      },
+      "MIN_ITEMS": {
+        "ITEM_POTION": 10,
+        "ITEM_SUPER_POTION": 10,
+        "ITEM_HYPER_POTION": 10,
+        "ITEM_MAX_POTION": 20,
+        "ITEM_BLUK_BERRY": 10,
+        "ITEM_NANAB_BERRY": 10,
+        "ITEM_REVIVE": 10,
+        "ITEM_MAX_REVIVE": 10,
+        "ITEM_RAZZ_BERRY": 10
+      },
+      "NEEDY_ITEM_FARMING": {
+        "ENABLE": false,
+        "POKEBALL_CONTINUE_THRESHOLD": 50,
+        "POKEBALL_FARM_THRESHOLD": 10,
+        "FARM_IGNORE_POKEBALL_COUNT": false,
+        "FARM_IGNORE_GREATBALL_COUNT": false,
+        "FARM_IGNORE_ULTRABALL_COUNT": false,
+        "FARM_IGNORE_MASTERBALL_COUNT": true,
+        "FARM_OVERRIDE_STEP_SIZE": -1
+      },
+      "POKEMON_EVOLUTION": {
+        "PIDGEY": 12,
+        "WEEDLE":12
+      },
+      "MIN_SIMILAR_POKEMON": 1,
+      "KEEP_POKEMON_NAMES": ["MEWTWO"],
+      "THROW_POKEMON_NAMES": ["PIDGEY"],
+      "LIST_POKEMON_BEFORE_CLEANUP": true,
+      "LIST_INVENTORY_BEFORE_CLEANUP": true,
+      "MAX_CATCH_ATTEMPTS": 10,
+      "RELEASE_DUPLICATES": false,
+      "RELEASE_DUPLICATES_MAX_LV": 1000,
+      "RELEASE_DUPLICATES_SCALER": 0.9,
+      "DEFINE_POKEMON_LV": "CP"
+    },
+    {
+      "auth_service": "ptc",
+      "username": "someusername",
+      "password": "password",
+      "location": "University of Southern California, Los Angeles, CA",
+      "USE_GOOGLE": false,
+      "MIN_KEEP_IV": 70
+    }
+  ]
+}
