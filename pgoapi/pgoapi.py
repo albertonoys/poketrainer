@@ -247,6 +247,13 @@ class PGoApi:
             raise AttributeError
 
     def hourly_exp(self, exp):
+        # This check is to prevent a bug with the exp not always coming in corretly on the first response
+        # (it often comes in as 0 initially, thereby messing up the whole XP/hour stat)
+        # This still works fine on a brand new trainer with no XP, just that the XP/hour calculation
+        # will be delayed until they earn their first XP.
+        if exp <= 0:
+            return
+
         if self.exp_start is None:
             self.exp_start = exp
         self.exp_current = exp
@@ -256,7 +263,7 @@ class PGoApi:
         exp_earned = float(self.exp_current - self.exp_start)
         exp_hour = float(exp_earned / run_time_hours)
 
-        self.log.info("=== Exp/Hour: %s ===", round(exp_hour, 2))
+        self.log.info("=== Running Time (hours): %s, Exp/Hour: %s ===", round(run_time_hours, 2), round(exp_hour))
 
         return exp_hour
 
@@ -331,7 +338,7 @@ class PGoApi:
                         self.STEP_SIZE = self.FARM_OVERRIDE_STEP_SIZE
                         self.log.info("Player has changed speed to %s", self.STEP_SIZE)
                 elif self.POKEBALL_CONTINUE_THRESHOLD <= pokeball_count and self._farm_mode_triggered:
-                    self.should_catch_pokemon = True
+                    self.should_catch_pokemon = self.config.get("CAPTURE", {}).get("CATCH_POKEMON", True) # Restore catch pokemon setting from config file
                     self._farm_mode_triggered = False
                     self.log.info("Player has %s Pokeballs, continuing to catch more!", pokeball_count)
                     if self.FARM_OVERRIDE_STEP_SIZE != -1:
@@ -379,7 +386,7 @@ class PGoApi:
         total_distance_traveled = 0
         total_distance = route_data['total_distance']
         self.log.info('===============================================')
-        self.log.info('Total trip distance will be: %s', total_distance)
+        self.log.info("Total trip distance will be: {0:.2f} meters".format(total_distance))
 
         for step_data in route_data['steps']:
             step = (step_data['lat'], step_data['long'])
@@ -416,7 +423,7 @@ class PGoApi:
         if destinations:
             nearest_fort = destinations[0][0]
             nearest_fort_dis = destinations[0][1]
-            self.log.info('Nearest fort distance is %s', nearest_fort_dis)
+            self.log.info("Nearest fort distance is {0:.2f} meters".format(nearest_fort_dis))
 
             # Fort is close enough to change our route and walk to
             if self.wander_steps > 0:
@@ -494,7 +501,7 @@ class PGoApi:
             fort['latitude'], fort['longitude'])
         self.walk_to((fort['latitude'], fort['longitude']), directly=directly)
         self.fort_search_pgoapi(fort, self.get_position(), fort_data[1])
-        if 'lure_info' in fort:
+        if 'lure_info' in fort and self.should_catch_pokemon:
             self.disk_encounter_pokemon(fort['lure_info'])
 
     def spin_near_fort(self):
@@ -696,6 +703,10 @@ class PGoApi:
         # never release favorites
         if pokemon.is_favorite:
             return False, False
+        if pokemon.cp > self.KEEP_CP_OVER:
+            return False, False
+        if pokemon.iv > self.KEEP_IV_OVER:
+            return False, False
         # dont keep more than MAX_SIMILAR_POKEMON
         elif kept_pokemon_of_type >= self.MAX_SIMILAR_POKEMON:
             return True, False
@@ -719,8 +730,6 @@ class PGoApi:
                 and pokemon.cp > (best_pokemon.cp * self.KEEP_IV_ONLY_WITH_PERCENT_CP / 100):
             return True, True
         # keep high-cp pokemons
-        elif pokemon.cp > self.KEEP_CP_OVER:
-            return False, False
         # release all other pokemons
         elif kept_pokemon_of_type >= self.MIN_SIMILAR_POKEMON:
             return True, False
@@ -785,11 +794,11 @@ class PGoApi:
                           POKEMON_NAMES.get(str(lureinfo.get('active_pokemon_id', 0)), "NA"))
             resp = self.disk_encounter(encounter_id=encounter_id, fort_id=fort_id, player_latitude=position[0],
                                        player_longitude=position[1]).call()['responses']['DISK_ENCOUNTER']
-            pokemon = Pokemon(resp.get('pokemon_data', {}))
             result = resp.get('result', -1)
-            capture_probability = create_capture_probability(resp.get('capture_probability', {}))
-            self.log.debug("Attempt Encounter: %s", json.dumps(resp, indent=4, sort_keys=True))
-            if result == 1:
+            if result == 1 and 'pokemon_data' in resp and 'capture_probability' in resp:
+                pokemon = Pokemon(resp.get('pokemon_data', {}))
+                capture_probability = create_capture_probability(resp.get('capture_probability', {}))
+                self.log.debug("Attempt Encounter: %s", json.dumps(resp, indent=4, sort_keys=True))
                 return self.do_catch_pokemon(encounter_id, fort_id, capture_probability, pokemon)
             elif result == 5:
                 self.log.info("Couldn't catch %s Your pokemon bag was full, attempting to clear and re-try",
@@ -842,25 +851,26 @@ class PGoApi:
             spawn_point_id = pokemon_data['spawn_point_id']
             # begin encounter_id
             position = self.get_position()
-            self.log.info("Trying initiate catching Pokemon: %s", Pokemon(pokemon_data))
+            pokemon = Pokemon(pokemon_data)
+            self.log.info("Trying initiate catching Pokemon: %s", pokemon)
             encounter = self.encounter(encounter_id=encounter_id,
                                        spawn_point_id=spawn_point_id,
                                        player_latitude=position[0],
                                        player_longitude=position[1]).call()['responses']['ENCOUNTER']
             self.log.debug("Attempting to Start Encounter: %s", encounter)
-            pokemon = Pokemon(encounter.get('wild_pokemon', {}).get('pokemon_data', {}))
             result = encounter.get('status', -1)
-            capture_probability = create_capture_probability(encounter.get('capture_probability', {}))
-            self.log.debug("Attempt Encounter Capture Probability: %s", json.dumps(encounter, indent=4, sort_keys=True))
-            if result == 1:
+            if result == 1 and 'wild_pokemon' in encounter and 'capture_probability' in encounter:
+                pokemon = Pokemon(encounter.get('wild_pokemon', {}).get('pokemon_data', {}))
+                capture_probability = create_capture_probability(encounter.get('capture_probability', {}))
+                self.log.debug("Attempt Encounter Capture Probability: %s", json.dumps(encounter, indent=4, sort_keys=True))
                 return self.do_catch_pokemon(encounter_id, spawn_point_id, capture_probability, pokemon)
             elif result == 7:
-                self.log.info("Couldn't catch %s Your pokemon bag was full, attempting to clear and re-try", pokemon)
+                self.log.info("Couldn't catch %s Your pokemon bag was full, attempting to clear and re-try", pokemon.pokemon_type)
                 self.cleanup_pokemon()
                 if not retry:
                     return self.encounter_pokemon(pokemon_data, retry=True)
             else:
-                self.log.info("Could not start encounter for pokemon: %s", pokemon)
+                self.log.info("Could not start encounter for pokemon: %s", pokemon.pokemon_type)
             return False
         except Exception as e:
             self.log.error("Error in pokemon encounter %s", e)
