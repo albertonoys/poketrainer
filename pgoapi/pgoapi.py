@@ -90,11 +90,16 @@ class PGoApi:
         self._farm_mode_triggered = False
         self._orig_step_size = config.get("BEHAVIOR", {}).get("STEP_SIZE", 200)
         self.wander_steps = config.get("BEHAVIOR", {}).get("WANDER_STEPS", 0)
+        pokeball_percent = config.get("CAPTURE", {}).get("USE_POKEBALL_IF_PERCENT", 15)
+        greatball_percent = config.get("CAPTURE", {}).get("USE_GREATBALL_IF_PERCENT", 15)
+        ultraball_percent = config.get("CAPTURE", {}).get("USE_ULTRABALL_IF_PERCENT", 15)
+        use_masterball = config.get("CAPTURE", {}).get("USE_MASTERBALL", False)
+        self.percentages = [pokeball_percent, greatball_percent, ultraball_percent, use_masterball]
 
         self.pokemon_caught = 0
         self.player = Player({})
         self.player_stats = PlayerStats({})
-        self.inventory = Player_Inventory([])
+        self.inventory = Player_Inventory(self.percentages, [])
 
         self._last_got_map_objects = 0
         self._map_objects_rate_limit = 5.0
@@ -106,7 +111,7 @@ class PGoApi:
         self.exp_current = None
         self.sem = BoundedSemaphore(1)
         self.persist_lock = False
-        self.sleep_mult = self.config.get("SLEEP_MULT", 1.0)
+        self.sleep_mult = self.config.get("SLEEP_MULT", 1.5)
         self.MIN_ITEMS = {}
         for k, v in config.get("MIN_ITEMS", {}).items():
             self.MIN_ITEMS[getattr(Inventory, k)] = v
@@ -222,7 +227,7 @@ class PGoApi:
 
     def call(self):
         self.cond_lock()
-        self.gsleep(self.config.get("EXTRA_WAIT", 0.2))
+        self.gsleep(self.config.get("EXTRA_WAIT", 0.3))
         try:
             if not self._req_method_list.get(id(gevent.getcurrent()), []):
                 return False
@@ -378,7 +383,7 @@ class PGoApi:
         self.gsleep(0.2)
         res = self.call()
         if 'GET_INVENTORY' in res['responses']:
-            self.inventory = Player_Inventory(res['responses']['GET_INVENTORY']['inventory_delta']['inventory_items'])
+            self.inventory = Player_Inventory(self.percentages, res['responses']['GET_INVENTORY']['inventory_delta']['inventory_items'])
         return res
 
     def get_player_inventory(self, as_json=True):
@@ -409,7 +414,7 @@ class PGoApi:
                 res['responses']['hourly_exp'] = self.hourly_exp(self.player_stats.experience)
                 f.write(json.dumps(res['responses'], indent=2, default=lambda obj: obj.decode('utf8')))
 
-            self.inventory = Player_Inventory(res['responses']['GET_INVENTORY']['inventory_delta']['inventory_items'])
+            self.inventory = Player_Inventory(self.percentages, res['responses']['GET_INVENTORY']['inventory_delta']['inventory_items'])
             for inventory_item in self.inventory.inventory_items:
                 if "player_stats" in inventory_item['inventory_item_data']:
                     self.player_stats = PlayerStats(inventory_item['inventory_item_data']['player_stats'])
@@ -422,10 +427,10 @@ class PGoApi:
             if self.LIST_POKEMON_BEFORE_CLEANUP:
                 self.log.info(get_inventory_data(res, self.player_stats.level, self.SCORE_METHOD, self.SCORE_SETTINGS))
             self.incubate_eggs()
-            self.attempt_evolve(self.inventory.inventory_items)
-            self.cleanup_pokemon(self.inventory.inventory_items)
             # Auto-use lucky-egg if applicable
             self.use_lucky_egg()
+            self.attempt_evolve(self.inventory.inventory_items)
+            self.cleanup_pokemon(self.inventory.inventory_items)
 
             # Farm precon
             if self.FARM_ITEMS_ENABLED:
@@ -528,8 +533,7 @@ class PGoApi:
     def spin_nearest_fort(self):
         map_cells = self.nearby_map_objects()['responses'].get('GET_MAP_OBJECTS', {}).get('map_cells', [])
         forts = PGoApi.flatmap(lambda c: c.get('forts', []), map_cells)
-        destinations = filtered_forts(self._origPosF, self._posf, forts, self.STAY_WITHIN_PROXIMITY, self.visited_forts,
-                                      self.experimental)
+        destinations = filtered_forts(self._origPosF, self._posf, forts, self.STAY_WITHIN_PROXIMITY, self.visited_forts)
         if destinations:
             nearest_fort = destinations[0][0]
             nearest_fort_dis = destinations[0][1]
@@ -590,8 +594,7 @@ class PGoApi:
         res = self.nearby_map_objects()
         map_cells = res['responses'].get('GET_MAP_OBJECTS', {}).get('map_cells', [])
         forts = PGoApi.flatmap(lambda c: c.get('forts', []), map_cells)
-        destinations = filtered_forts(self._origPosF, self._posf, forts, self.STAY_WITHIN_PROXIMITY, self.visited_forts,
-                                      self.experimental)
+        destinations = filtered_forts(self._origPosF, self._posf, forts, self.STAY_WITHIN_PROXIMITY, self.visited_forts)
         if not destinations:
             self.log.debug("No fort to walk to! %s", res)
             self.log.info('No more spinnable forts within proximity. Or server error')
@@ -623,8 +626,7 @@ class PGoApi:
         res = self.nearby_map_objects()
         map_cells = res['responses'].get('GET_MAP_OBJECTS', {}).get('map_cells', [])
         forts = PGoApi.flatmap(lambda c: c.get('forts', []), map_cells)
-        destinations = filtered_forts(self._origPosF, self._posf, forts, self.STAY_WITHIN_PROXIMITY, self.visited_forts,
-                                      self.experimental)
+        destinations = filtered_forts(self._origPosF, self._posf, forts, self.STAY_WITHIN_PROXIMITY, self.visited_forts)
         if not destinations:
             self.log.debug("No fort to walk to! %s", res)
             self.log.info('No more spinnable forts within proximity. Returning back to origin')
@@ -668,9 +670,10 @@ class PGoApi:
             position = self.get_position()
             neighbors = get_neighbors(self._posf)
             gevent.sleep(1.0)
-            self.map_objects = self.get_map_objects(latitude=position[0], longitude=position[1],
-                                since_timestamp_ms=[0] * len(neighbors),
-                                cell_id=neighbors).call()
+            self.map_objects = self.get_map_objects(
+                latitude=position[0], longitude=position[1],
+                since_timestamp_ms=[0] * len(neighbors),
+                cell_id=neighbors).call()
             self._last_got_map_objects = time()
         return self.map_objects
 
@@ -681,7 +684,7 @@ class PGoApi:
         if not capture_probability:
             capture_probability = {}
         # Max 4 attempts to catch pokemon
-        while catch_status != 1 and self.inventory.can_attempt_catch() and catch_attempts < 11:
+        while catch_status != 1 and self.inventory.can_attempt_catch() and catch_attempts <= self.max_catch_attempts:
             item_capture_mult = 1.0
 
             # Try to use a berry to increase the chance of catching the pokemon when we have failed enough attempts
@@ -870,7 +873,7 @@ class PGoApi:
             inventory_items = self.get_inventory().call()['responses']['GET_INVENTORY']['inventory_delta'][
                 'inventory_items']
         caught_pokemon = self.get_caught_pokemons(inventory_items)
-        self.inventory = Player_Inventory(inventory_items)
+        self.inventory = Player_Inventory(self.percentages, inventory_items)
         for pokemons in caught_pokemon.values():
             if len(pokemons) > self.MIN_SIMILAR_POKEMON:
                 pokemons = sorted(pokemons, key=lambda x: (x.cp, x.iv), reverse=True)
@@ -905,7 +908,7 @@ class PGoApi:
     def is_pokemon_eligible_for_evolution(self, pokemon):
         candy_have = self.inventory.pokemon_candy.get(self.POKEMON_EVOLUTION_FAMILY.get(pokemon.pokemon_id, None), -1)
         candy_needed = self.POKEMON_EVOLUTION.get(pokemon.pokemon_id, None)
-        return candy_needed and candy_have > candy_needed and \
+        return candy_have > candy_needed and \
             pokemon.pokemon_id not in self.keep_pokemon_ids \
             and not pokemon.is_favorite \
             and pokemon.pokemon_id in self.POKEMON_EVOLUTION
