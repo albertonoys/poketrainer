@@ -1,4 +1,6 @@
 # DISCLAIMER: This is jank
+from __future__ import print_function
+
 import csv
 import json
 import os
@@ -6,7 +8,7 @@ import re
 from collections import defaultdict
 
 import zerorpc
-from flask import Flask, flash, redirect, render_template, url_for, jsonify
+from flask import Flask, flash, jsonify, redirect, render_template, url_for
 
 from pgoapi.poke_utils import pokemon_iv_percentage
 
@@ -41,7 +43,7 @@ def get_api_rpc(username):
     sock_port = 0
     with open(desc_file) as f:
         data = f.read()
-        data = json.loads(data.encode() if len(data) > 0 else '{}')
+        data = json.loads(data if len(data) > 0 else '{}')
         if username not in data:
             print("There is no bot running with the input username!")
             return None
@@ -60,7 +62,7 @@ def status(username):
         return("There is no bot running with the input username!")
     with open("data_dumps/%s.json" % username) as f:
         data = f.read()
-        data = json.loads(data.encode())
+        data = json.loads(data)
         currency = data['GET_PLAYER']['player_data']['currencies'][1]['amount']
         latlng = c.current_location()
         latlng = "%f,%f" % (latlng[0], latlng[1])
@@ -80,7 +82,7 @@ def status(username):
             if "pokemon_family" in item:
                 filled_family = str(item['pokemon_family']['family_id']).zfill(4)
                 candy[filled_family] += item['pokemon_family'].get("candy", 0)
-        pokemons = sorted(pokemons, lambda x, y: cmp(x["iv"], y["iv"]), reverse=True)
+        pokemons = sorted(pokemons, key=lambda x: x["iv"], reverse=True)
         # add candy back into pokemon json
         for pokemon in pokemons:
             pokemon['candy'] = candy[pokemon['family_id']]
@@ -97,7 +99,7 @@ def pokemon(username):
         pokemons = json.loads(s.get_caught_pokemons())
     except ValueError:
         # FIXME Use logger instead of print statements!
-        print "Not valid Json"
+        print("Not valid Json")
 
     return render_template('pokemon.html', pokemons=pokemons, username=username)
 
@@ -109,7 +111,7 @@ def inventory(username):
         inventory = json.loads(s.get_inventory())
     except ValueError:
         # FIXME Use logger instead of print statements!
-        print "Not valid Json"
+        print("Not valid Json")
 
     return render_template('inventory.html', inventory=json.dumps(inventory, indent=2), username=username)
 
@@ -122,6 +124,7 @@ def transfer(username, p_id):
     else:
         flash("Failed!")
     return redirect(url_for('inventory', username=username))
+
 
 @app.route("/<username>/snipe/<latlng>")
 def snipe(username, latlng):
